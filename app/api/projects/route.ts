@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { handleApiError, jsonError } from "@/lib/api";
@@ -15,15 +14,16 @@ export async function GET(request: Request) {
     const query = url.searchParams.get("q")?.trim();
     const status = url.searchParams.get("status");
     const sort = url.searchParams.get("sort") ?? "updated_desc";
+    const textFilter = query ? { contains: query, mode: "insensitive" as const } : null;
 
-    const where: Prisma.ProjectWhereInput = {
+    const where = {
       userId: session.user.id,
-      ...(query
+      ...(textFilter
         ? {
             OR: [
-              { name: { contains: query, mode: "insensitive" } },
-              { clientName: { contains: query, mode: "insensitive" } },
-              { tags: { hasSome: [query] } }
+              { name: textFilter },
+              { clientName: textFilter },
+              { tags: { hasSome: [query!] } }
             ]
           }
         : {}),
