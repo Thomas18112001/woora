@@ -9,9 +9,21 @@ import { prisma } from "@/lib/prisma";
 
 const DEFAULT_CREDENTIALS_EMAIL = process.env.CREDENTIALS_LOGIN_EMAIL ?? "contact@woora.fr";
 const DEFAULT_CREDENTIALS_PASSWORD = process.env.CREDENTIALS_LOGIN_PASSWORD ?? "Thbs1811!";
+const hasEmailProvider = Boolean(process.env.EMAIL_SERVER_HOST && process.env.EMAIL_FROM);
+const hasGoogleProvider = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const useDatabaseAdapter = hasEmailProvider || hasGoogleProvider;
+
+if (!process.env.NEXTAUTH_URL) {
+  const netlifyPrimary = process.env.URL;
+  const netlifyPreview = process.env.DEPLOY_PRIME_URL;
+  const fallbackUrl = netlifyPreview || netlifyPrimary;
+  if (fallbackUrl) {
+    process.env.NEXTAUTH_URL = fallbackUrl.startsWith("http") ? fallbackUrl : `https://${fallbackUrl}`;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  ...(useDatabaseAdapter ? { adapter: PrismaAdapter(prisma) } : {}),
   session: {
     strategy: "jwt"
   },
@@ -38,7 +50,7 @@ export const authOptions: NextAuthOptions = {
         return { id: user.id, email: user.email, name: user.name };
       }
     }),
-    ...(process.env.EMAIL_SERVER_HOST && process.env.EMAIL_FROM
+    ...(hasEmailProvider
       ? [
           EmailProvider({
             server: {
@@ -53,11 +65,11 @@ export const authOptions: NextAuthOptions = {
           })
         ]
       : []),
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ...(hasGoogleProvider
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!
           })
         ]
       : [])

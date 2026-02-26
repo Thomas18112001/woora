@@ -43,7 +43,11 @@ export function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setMessage("Email ou mot de passe invalide.");
+      setMessage(
+        result.error === "CredentialsSignin"
+          ? "Email ou mot de passe invalide."
+          : "Connexion impossible. Vérifiez la configuration du serveur."
+      );
       return;
     }
 
