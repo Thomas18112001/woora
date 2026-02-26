@@ -26,17 +26,12 @@ export async function GET(request: Request) {
       orderBy: { startAt: "desc" }
     });
 
-    // ✅ Type issu directement du résultat (aucun type Prisma requis)
-    type Entry = (typeof entries)[number];
-
     const header = ["Date", "Projet", "Tâche", "Durée (h)", "Montant (€)", "Note"] as const;
 
-    const rows = entries.map((entry: Entry) => {
+    const rows: string[][] = entries.map((entry) => {
       const hours = entry.durationSeconds / 3600;
-
       const rateRaw = entry.project.hourlyRate;
       const rate = rateRaw == null ? 0 : Number(rateRaw);
-
       const amount = hours * rate;
 
       return [
@@ -50,7 +45,7 @@ export async function GET(request: Request) {
     });
 
     const csv = [Array.from(header), ...rows]
-      .map((line) => line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(";"))
+      .map((line: string[]) => line.map((value: string) => `"${value.replace(/"/g, '""')}"`).join(";"))
       .join("\n");
 
     return new Response(csv, {
