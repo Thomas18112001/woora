@@ -8,19 +8,14 @@ datasource db {
 }
 
 model User {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String?
-  email         String?     @unique
+  email         String?  @unique
   emailVerified DateTime?
   image         String?
-  accounts      Account[]
-  sessions      Session[]
-  projects      Project[]
-  timeEntries   TimeEntry[]
-  attachments   Attachment[]
-  settings      UserSetting?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  password      String   // 👈 AJOUTER ÇA
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Account {
