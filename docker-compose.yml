@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: woora
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/woora
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: change-me-in-production
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      EMAIL_SERVER_HOST: ""
+      EMAIL_SERVER_PORT: "587"
+      EMAIL_SERVER_USER: ""
+      EMAIL_SERVER_PASSWORD: ""
+      EMAIL_FROM: noreply@example.com
+    command: sh -c "npx prisma migrate deploy && npm run start"
+
+volumes:
+  pgdata:
