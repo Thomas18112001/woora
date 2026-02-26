@@ -5,16 +5,31 @@ import { prisma } from "@/lib/prisma";
 import { jsonError, handleApiError } from "@/lib/api";
 import { getRangeStart } from "@/lib/time";
 
+type Range = "today" | "week" | "month";
+
+interface ExportEntry {
+  startAt: Date;
+  durationSeconds: number;
+  note: string | null;
+  project: {
+    name: string | null;
+    hourlyRate: number | string | null;
+  };
+  task: {
+    title: string | null;
+  } | null;
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getAuthSession();
     if (!session?.user?.id) return jsonError(401, "Non autorisé");
 
     const url = new URL(request.url);
-    const range = (url.searchParams.get("range") ?? "week") as "today" | "week" | "month";
+    const range = (url.searchParams.get("range") ?? "week") as Range;
     const start = getRangeStart(range);
 
-    const entries = await prisma.timeEntry.findMany({
+    const entries = (await prisma.timeEntry.findMany({
       where: {
         userId: session.user.id,
         startAt: { gte: start }
@@ -24,18 +39,20 @@ export async function GET(request: Request) {
         task: { select: { title: true } }
       },
       orderBy: { startAt: "desc" }
-    });
+    })) as ExportEntry[];
 
-    const header = ["Date", "Projet", "Tâche", "Durée (h)", "Montant (€)", "Note"] as const;
+    const header: string[] = ["Date", "Projet", "Tâche", "Durée (h)", "Montant (€)", "Note"];
 
-    const rows: string[][] = entries.map((entry) => {
+    const rows: string[][] = entries.map((entry: ExportEntry) => {
       const hours = entry.durationSeconds / 3600;
+
       const rateRaw = entry.project.hourlyRate;
       const rate = rateRaw == null ? 0 : Number(rateRaw);
+
       const amount = hours * rate;
 
       return [
-        new Date(entry.startAt).toLocaleString("fr-FR"),
+        entry.startAt.toLocaleString("fr-FR"),
         entry.project.name ?? "",
         entry.task?.title ?? "",
         hours.toFixed(2),
@@ -44,7 +61,7 @@ export async function GET(request: Request) {
       ];
     });
 
-    const csv = [Array.from(header), ...rows]
+    const csv = [header, ...rows]
       .map((line: string[]) => line.map((value: string) => `"${value.replace(/"/g, '""')}"`).join(";"))
       .join("\n");
 
