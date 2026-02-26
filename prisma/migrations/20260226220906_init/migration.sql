@@ -78,6 +78,7 @@ CREATE TABLE "Task" (
     "description" TEXT,
     "status" "TaskStatus" NOT NULL DEFAULT 'TODO',
     "priority" "TaskPriority" NOT NULL DEFAULT 'MEDIUM',
+    "tags" TEXT[],
     "estimateMinutes" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -94,10 +95,40 @@ CREATE TABLE "TimeEntry" (
     "startAt" TIMESTAMP(3) NOT NULL,
     "endAt" TIMESTAMP(3),
     "durationSeconds" INTEGER NOT NULL DEFAULT 0,
+    "billable" BOOLEAN NOT NULL DEFAULT true,
+    "isManual" BOOLEAN NOT NULL DEFAULT false,
     "note" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "TimeEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserSetting" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "theme" TEXT NOT NULL DEFAULT 'light',
+    "locale" TEXT NOT NULL DEFAULT 'fr-FR',
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserSetting_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Attachment" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "projectId" TEXT,
+    "taskId" TEXT,
+    "filename" TEXT NOT NULL,
+    "storageKey" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "sizeBytes" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Attachment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -131,7 +162,19 @@ CREATE INDEX "TimeEntry_projectId_idx" ON "TimeEntry"("projectId");
 CREATE INDEX "TimeEntry_taskId_idx" ON "TimeEntry"("taskId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "TimeEntry_one_active_per_user_idx" ON "TimeEntry"("userId") WHERE "endAt" IS NULL;
+CREATE UNIQUE INDEX "UserSetting_userId_key" ON "UserSetting"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Attachment_storageKey_key" ON "Attachment"("storageKey");
+
+-- CreateIndex
+CREATE INDEX "Attachment_userId_createdAt_idx" ON "Attachment"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Attachment_projectId_idx" ON "Attachment"("projectId");
+
+-- CreateIndex
+CREATE INDEX "Attachment_taskId_idx" ON "Attachment"("taskId");
 
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -153,3 +196,15 @@ ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_projectId_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserSetting" ADD CONSTRAINT "UserSetting_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Attachment" ADD CONSTRAINT "Attachment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Attachment" ADD CONSTRAINT "Attachment_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Attachment" ADD CONSTRAINT "Attachment_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
