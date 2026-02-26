@@ -1,9 +1,17 @@
 export const dynamic = "force-dynamic";
 
+import type { Prisma } from "@prisma/client";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonError, handleApiError } from "@/lib/api";
 import { getRangeStart } from "@/lib/time";
+
+type TimeEntryWithProjectAndTask = Prisma.TimeEntryGetPayload<{
+  include: {
+    project: { select: { name: true; hourlyRate: true } };
+    task: { select: { title: true } };
+  };
+}>;
 
 export async function GET(request: Request) {
   try {
@@ -14,7 +22,7 @@ export async function GET(request: Request) {
     const range = (url.searchParams.get("range") ?? "week") as "today" | "week" | "month";
     const start = getRangeStart(range);
 
-    const entries = await prisma.timeEntry.findMany({
+    const entries: TimeEntryWithProjectAndTask[] = await prisma.timeEntry.findMany({
       where: {
         userId: session.user.id,
         startAt: { gte: start }
@@ -26,14 +34,20 @@ export async function GET(request: Request) {
       orderBy: { startAt: "desc" }
     });
 
-    const header = ["Date", "Projet", "Tâche", "Durée (h)", "Montant (€)", "Note"];
+    const header = ["Date", "Projet", "Tâche", "Durée (h)", "Montant (€)", "Note"] as const;
+
     const rows = entries.map((entry) => {
       const hours = entry.durationSeconds / 3600;
-      const rate = entry.project.hourlyRate ? Number(entry.project.hourlyRate) : 0;
+
+      // hourlyRate peut être number | string | null selon ton schema Prisma
+      const rateRaw = entry.project.hourlyRate;
+      const rate = rateRaw == null ? 0 : Number(rateRaw);
+
       const amount = hours * rate;
+
       return [
         new Date(entry.startAt).toLocaleString("fr-FR"),
-        entry.project.name,
+        entry.project.name ?? "",
         entry.task?.title ?? "",
         hours.toFixed(2),
         amount.toFixed(2),
@@ -41,7 +55,7 @@ export async function GET(request: Request) {
       ];
     });
 
-    const csv = [header, ...rows]
+    const csv = [Array.from(header), ...rows]
       .map((line) => line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(";"))
       .join("\n");
 
