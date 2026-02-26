@@ -38,13 +38,20 @@ export async function GET(request: Request) {
 
     const activeProjects = await prisma.project.count({ where: { userId: session.user.id, status: "ACTIVE" } });
 
-    const totalSeconds = entries.reduce<number>( (acc, entry) => acc + (entry.durationSeconds ?? 0), 0 );
-    const totalRevenue = entries.reduce<number>((acc, entry) => {
+    const totalSeconds = entries.reduce(
+  (acc: number, entry: any) => acc + (entry.durationSeconds ?? 0),
+  0
+);
+
+const totalRevenue = entries.reduce(
+  (acc: number, entry: any) => {
     const hours = (entry.durationSeconds ?? 0) / 3600;
     const rateRaw = entry.project?.hourlyRate;
     const rate = rateRaw == null ? 0 : Number(rateRaw);
-      return acc + hours * rate;
-    }, 0);
+    return acc + hours * rate;
+  },
+  0
+);
     const avgSessionSeconds = entries.length > 0 ? Math.round(totalSeconds / entries.length) : 0;
 
     const projectMap = new Map<string, { projectId: string; projectName: string; seconds: number; montantEuros: number }>();
